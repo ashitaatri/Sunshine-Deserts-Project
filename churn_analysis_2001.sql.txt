@@ -1,0 +1,171 @@
+Churn-version 2 --sql
+
+
+--Employee Churn (2001 only):
+-- o What does employee churn look like across departments?
+-- o Are certain departments more suscepble to churn?
+ -- o What conclusions can be drawn from the analysis?
+/*
+SELECT * FROM employees;
+select * from dept_emp;
+select * from departments
+*/
+
+select *
+from departments as d
+Inner join dept_emp as dp
+on d.dept_no = dp.dept_no ;
+
+-- step 1: leaving date 2001
+--Calculated total churn in 2001
+SELECT COUNT(*) AS total_churn_2001
+FROM dept_emp
+WHERE to_date BETWEEN '2001-01-01' AND '2001-12-31';
+
+--step 2: Churn percentage by department
+SELECT 
+    d.dept_name, 
+    ROUND(COUNT(CASE WHEN dp.to_date BETWEEN '2001-01-01' AND '2001-12-31' THEN dp.emp_no END) * 100.0 
+        / COUNT(dp.emp_no), 
+        2
+    ) AS churn_percentage
+FROM dept_emp AS dp
+INNER JOIN departments AS d
+    ON dp.dept_no = d.dept_no
+GROUP BY d.dept_name;
+
+
+--Average Churn Percentage
+--AVg churn% = Sum of churn % from all departments/Number of departments
+​
+--Average churn across departments
+SELECT 
+    ROUND(AVG(churn_percentage), 2) AS avg_churn_percentage
+FROM (
+    SELECT 
+        d.dept_name, 
+        COUNT(CASE WHEN dp.to_date BETWEEN '2001-01-01' AND '2001-12-31' THEN dp.emp_no END) * 100.0 
+        / COUNT(dp.emp_no) AS churn_percentage
+    FROM dept_emp AS dp
+    INNER JOIN departments AS d ON dp.dept_no = d.dept_no
+    GROUP BY d.dept_name
+) AS dept_churns;
+
+--Difference from average churn per department
+-- Step I: Calculate churn percentage by department --SAME AS (III)
+WITH dept_churns AS (
+    SELECT 
+        d.dept_name, 
+        COUNT(CASE WHEN dp.to_date BETWEEN '2001-01-01' AND '2001-12-31' THEN dp.emp_no END) * 100.0 
+        / COUNT(dp.emp_no) AS churn_percentage
+    FROM dept_emp dp
+    JOIN departments d ON dp.dept_no = d.dept_no
+    GROUP BY d.dept_name),
+
+-- Step II: Calculate average churn across all departments
+avg_churn AS (SELECT AVG(churn_percentage) AS avg_churn
+    FROM dept_churns)
+
+-- Step III: Compare each department's churn with the average
+SELECT 
+    dc.dept_name,
+    ROUND(dc.churn_percentage, 2) AS churn_percentage,
+    ROUND(ac.avg_churn, 2) AS avg_churn,
+    ROUND(dc.churn_percentage - ac.avg_churn, 2) AS diff_from_avg
+FROM dept_churns dc
+CROSS JOIN avg_churn ac
+ORDER BY diff_from_avg DESC;
+*/
+
+--detail about gender --	Gender-wise churn list (individual employees)
+--Employee-Level Churn Details
+Select e.emp_no, Concat(e.first_name, ' ',e.last_name) as 'Employee Name', e.hire_date, e.gender, 
+dp.dept_no, dp.to_date, d.dept_name 
+from employees e inner join dept_emp dp
+on e.emp_no = dp.emp_no
+inner join departments d
+on dp.dept_no = d.dept_no
+where dp.to_date between '2001-01-01' and '2001-12-31';
+
+--Summary 
+/*
+--I.Churn % by Department
+SELECT 
+d.dept_name, 
+        ROUND(COUNT(CASE WHEN dp.to_date BETWEEN '2001-01-01' AND '2001-12-31' THEN 1 END) * 100.0 
+        / COUNT(*), 2) AS churn_percentage
+    FROM dept_emp dp
+    JOIN departments d ON dp.dept_no = d.dept_no
+    GROUP BY d.dept_name;
+*/
+--II. Churn % by Department and Gender
+SELECT 
+    d.dept_name,
+    e.gender,
+    ROUND(COUNT(CASE WHEN dp.to_date BETWEEN '2001-01-01' AND '2001-12-31' THEN 1 END) * 100.0 
+        / COUNT(*), 2) AS churn_percentage
+FROM dept_emp dp
+JOIN employees e ON dp.emp_no = e.emp_no
+JOIN departments d ON dp.dept_no = d.dept_no
+GROUP BY d.dept_name, e.gender;
+
+--III. Difference from Average Churn--SAME AS (STEP I)
+WITH dept_churns AS (
+    SELECT 
+        d.dept_name, 
+        COUNT(CASE WHEN dp.to_date BETWEEN '2001-01-01' AND '2001-12-31' THEN 1 END) * 100.0 
+            / COUNT(*) AS churn_percentage
+    FROM dept_emp dp
+    JOIN departments d ON dp.dept_no = d.dept_no
+    GROUP BY d.dept_name
+),
+avg_churn AS (
+    SELECT AVG(churn_percentage) AS avg_churn FROM dept_churns
+)
+SELECT 
+    dc.dept_name,
+    ROUND(dc.churn_percentage, 2) AS churn_percentage,
+    ROUND(ac.avg_churn, 2) AS avg_churn,
+    ROUND(dc.churn_percentage - ac.avg_churn, 2) AS diff_from_avg
+FROM dept_churns dc
+CROSS JOIN avg_churn ac;
+
+--- III (Above/Below Average Churn)
+-- Step 1: Churn % by department
+WITH dept_churns AS (
+    SELECT 
+        d.dept_name, 
+        COUNT(CASE WHEN dp.to_date BETWEEN '2001-01-01' AND '2001-12-31' THEN 1 END) * 100.0 
+            / COUNT(*) AS churn_percentage
+    FROM dept_emp dp
+    JOIN departments d ON dp.dept_no = d.dept_no
+    GROUP BY d.dept_name
+),
+
+-- Step 2: Average churn across all departments
+avg_churn AS (
+    SELECT AVG(churn_percentage) AS avg_churn FROM dept_churns
+)
+
+-- Step 3: Final output with status
+SELECT 
+    dc.dept_name,
+    ROUND(dc.churn_percentage, 2) AS churn_percentage,
+    ROUND(ac.avg_churn, 2) AS avg_churn,
+    ROUND(dc.churn_percentage - ac.avg_churn, 2) AS diff_from_avg,
+    CASE 
+        WHEN dc.churn_percentage > ac.avg_churn THEN 'Above Average'
+        WHEN dc.churn_percentage < ac.avg_churn THEN 'Below Average'
+        ELSE 'At Average'
+    END AS churn_status
+FROM dept_churns dc
+CROSS JOIN avg_churn ac;
+
+
+--Are certain departments more suscepble to churn?
+--1st- higher churn rate 3.17% (reseach and production)
+--2nd- sales 3.04%
+
+--avg year of services = columns
+--distinct count of emp -rows
+
