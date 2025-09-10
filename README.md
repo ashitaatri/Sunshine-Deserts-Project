@@ -70,7 +70,7 @@ The file `churn_analysis_2001.sql` includes:
 - Status: Above / Below Average churn
 - Employee-level churn details
 
-You can view the SQL file [here](./SQL/churn_analysis_2001.sql)
+You can view the SQL file [here](churn_analysis_2001.sql.txt)
 
 ---
 
