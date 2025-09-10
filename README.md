@@ -3,7 +3,7 @@
 📅 **Date:** June 2025  
 👩‍💻 **Created by:** Ashita Atri  
 📄 **[View Final Project Report (PDF)](Sunshine-Deserts-Data-Analyst-Project.pdf)**  
-🗃️ **[Explore SQL Queries](./SQL/churn_analysis_2001.sql)**
+🗃️ **[Explore SQL Queries](churn_analysis_2001.sql.txt)**
 
 ---
 
